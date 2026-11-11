@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <title>Morpion — deux joueurs</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101827;
+      --panel: #182438;
+      --panel-2: #22324a;
+      --text: #f4f7fb;
+      --muted: #a9b7ca;
+      --accent: #77e0c3;
+      --x: #77e0c3;
+      --o: #ffbd75;
+      --line: #3b4d66;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; padding: 28px 16px;
+      display: grid; place-items: center;
+      background: radial-gradient(ellipse at top, #20334d 0%, var(--bg) 62%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { width: min(100%, 520px); }
+    header { text-align: center; margin-bottom: 22px; }
+    .eyebrow { color: var(--accent); text-transform: uppercase; letter-spacing: .16em; font-size: .75rem; font-weight: 800; }
+    h1 { margin: 8px 0 6px; font-size: clamp(2rem, 7vw, 3rem); letter-spacing: -.04em; }
+    header p { margin: 0; color: var(--muted); }
+    .scoreboard { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+    .player {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+      padding: 13px 16px; display: flex; align-items: center; justify-content: space-between;
+      transition: border-color .2s, transform .2s;
+    }
+    .player.active { border-color: var(--accent); box-shadow: 0 0 0 2px #77e0c322; transform: translateY(-2px); }
+    .player-name { display: flex; align-items: center; gap: 9px; font-weight: 700; }
+    .symbol { font-size: 1.35rem; font-weight: 900; }
+    .symbol.x { color: var(--x); } .symbol.o { color: var(--o); }
+    .score { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .status {
+      min-height: 56px; margin-bottom: 14px; padding: 14px 16px;
+      display: flex; justify-content: center; align-items: center; text-align: center;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+      color: var(--text); font-weight: 650;
+    }
+    .board {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      padding: 12px; background: #0b1220aa; border: 1px solid var(--line);
+      border-radius: 20px; box-shadow: 0 18px 55px #0005;
+    }
+    .cell {
+      aspect-ratio: 1; border: 1px solid var(--line); border-radius: 13px;
+      background: var(--panel-2); color: var(--text); cursor: pointer;
+      display: grid; place-items: center; font: 900 clamp(2.8rem, 13vw, 5rem)/1 system-ui;
+      transition: background .15s, transform .15s, border-color .15s;
+    }
+    .cell:not(:disabled):hover { background: #2d4260; border-color: #7186a3; transform: scale(1.025); }
+    .cell:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    .cell:disabled { cursor: default; opacity: 1; }
+    .cell.x { color: var(--x); } .cell.o { color: var(--o); }
+    .cell.winner { background: #244c4a; border-color: var(--accent); }
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+    .actions button {
+      flex: 1; border: 0; border-radius: 12px; padding: 13px 16px;
+      font: inherit; font-weight: 750; cursor: pointer; transition: filter .15s, transform .15s;
+    }
+    .actions button:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    #restart { background: var(--accent); color: #10251f; }
+    #resetScores { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); }
+    .rules { margin: 18px 4px 0; color: var(--muted); font-size: .9rem; line-height: 1.55; text-align: center; }
+    @media (max-width: 380px) { body { padding-inline: 10px; } .board { gap: 7px; padding: 8px; } .scoreboard { gap: 7px; } .player { padding: 11px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="eyebrow">Jeu à deux</div>
+      <h1>Morpion</h1>
+      <p>À vous de jouer, chacun votre tour !</p>
+    </header>
+
+    <section class="scoreboard" aria-label="Scores">
+      <div class="player active" id="playerX">
+        <div class="player-name"><span class="symbol x">✕</span><span>Joueur 1</span></div>
+        <span class="score" id="scoreX">0</span>
+      </div>
+      <div class="player" id="playerO">
+        <div class="player-name"><span class="symbol o">○</span><span>Joueur 2</span></div>
+        <span class="score" id="scoreO">0</span>
+      </div>
+    </section>
+
+    <div class="status" id="status" role="status" aria-live="polite">Au tour du joueur 1 (✕)</div>
+
+    <section class="board" id="board" aria-label="Grille de morpion">
+      <button class="cell" data-index="0" aria-label="Case 1, vide"></button>
+      <button class="cell" data-index="1" aria-label="Case 2, vide"></button>
+      <button class="cell" data-index="2" aria-label="Case 3, vide"></button>
+      <button class="cell" data-index="3" aria-label="Case 4, vide"></button>
+      <button class="cell" data-index="4" aria-label="Case 5, vide"></button>
+      <button class="cell" data-index="5" aria-label="Case 6, vide"></button>
+      <button class="cell" data-index="6" aria-label="Case 7, vide"></button>
+      <button class="cell" data-index="7" aria-label="Case 8, vide"></button>
+      <button class="cell" data-index="8" aria-label="Case 9, vide"></button>
+    </section>
+
+    <div class="actions">
+      <button id="restart" type="button">Rejouer la manche</button>
+      <button id="resetScores" type="button">Remettre les scores à zéro</button>
+    </div>
+    <p class="rules">Alignez trois symboles horizontalement, verticalement ou en diagonale pour gagner. Si les neuf cases sont remplies sans alignement, la manche est nulle.</p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+      const cells = [...document.querySelectorAll(".cell")];
+      const status = document.getElementById("status");
+      const playerX = document.getElementById("playerX");
+      const playerO = document.getElementById("playerO");
+      const scoreXEl = document.getElementById("scoreX");
+      const scoreOEl = document.getElementById("scoreO");
+      const restartButton = document.getElementById("restart");
+      const resetScoresButton = document.getElementById("resetScores");
+
+      const winningLines = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+
+      let board = Array(9).fill("");
+      let currentPlayer = "X";
+      let gameOver = false;
+      let scores = { X: 0, O: 0 };
+
+      function winningLine() {
+        return winningLines.find(([a, b, c]) =>
+          board[a] && board[a] === board[b] && board[a] === board[c]
+        );
+      }
+
+      function updateTurnDisplay() {
+        playerX.classList.toggle("active", currentPlayer === "X" && !gameOver);
+        playerO.classList.toggle("active", currentPlayer === "O" && !gameOver);
+      }
+
+      function updateScores() {
+        scoreXEl.textContent = scores.X;
+        scoreOEl.textContent = scores.O;
+      }
+
+      function render() {
+        cells.forEach((cell, index) => {
+          const value = board[index];
+          cell.textContent = value === "X" ? "✕" : value === "O" ? "○" : "";
+          cell.classList.toggle("x", value === "X");
+          cell.classList.toggle("o", value === "O");
+          cell.disabled = Boolean(value) || gameOver;
+          cell.setAttribute("aria-label", `Case ${index + 1}, ${value ? (value === "X" ? "croix" : "rond") : "vide"}`);
+        });
+        updateTurnDisplay();
+      }
+
+      function play(index) {
+        if (gameOver || board[index]) return;
+        board[index] = currentPlayer;
+
+        const line = winningLine();
+        if (line) {
+          gameOver = true;
+          scores[currentPlayer]++;
+          updateScores();
+          line.forEach(i => cells[i].classList.add("winner"));
+          status.textContent = `Le joueur ${currentPlayer === "X" ? "1 (✕)" : "2 (○)"} gagne la manche !`;
+        } else if (board.every(Boolean)) {
+          gameOver = true;
+          status.textContent = "Match nul ! Aucun alignement : bien joué à tous les deux.";
+        } else {
+          currentPlayer = currentPlayer === "X" ? "O" : "X";
+          status.textContent = `Au tour du joueur ${currentPlayer === "X" ? "1 (✕)" : "2 (○)"}`;
+        }
+        render();
+      }
+
+      function newRound() {
+        board = Array(9).fill("");
+        currentPlayer = "X";
+        gameOver = false;
+        cells.forEach(cell => cell.classList.remove("winner"));
+        status.textContent = "Au tour du joueur 1 (✕)";
+        render();
+      }
+
+      cells.forEach(cell => cell.addEventListener("click", () => play(Number(cell.dataset.index))));
+      restartButton.addEventListener("click", newRound);
+      resetScoresButton.addEventListener("click", () => {
+        scores = { X: 0, O: 0 };
+        updateScores();
+        newRound();
+      });
+      render();
+    })();
+  </script>
+</body>
+</html>
